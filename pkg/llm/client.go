@@ -20,6 +20,9 @@ func NewClient(apiKey, baseURL, model string) (*Client, error) {
 	if baseURL == "" {
 		baseURL = "https://api.siliconflow.cn/v1"
 	}
+	if model == "" {
+		model = "deepseek-ai/DeepSeek-V4-Flash"
+	}
 
 	// 基于 openai.DefaultConfig(apiKey) 配置 BaseURL 并创建 Client
 	config := openai.DefaultConfig(apiKey)
@@ -38,13 +41,24 @@ func (c *Client) Completion(ctx context.Context, messages []openai.ChatCompletio
 	// TODO: 构造 ChatCompletionRequest 并调用 CreateChatCompletion，提取第一个 choice 的 content 文本
 
 	req := openai.ChatCompletionRequest{
-		Model:    c.model,
-		Messages: messages,
+		Model:       c.model,
+		Messages:    messages,
+		Stream:      false,
+		Temperature: 0.2,
+		MaxTokens:   4096,
 	}
 	resp, err := c.apiClient.CreateChatCompletion(ctx, req)
 	if err != nil {
 		return "", err
 	}
 
+	if len(resp.Choices) == 0 {
+		return "", errors.New("llm returned empty choices")
+	}
+
+	if len(resp.Choices[0].Message.Content) == 0 {
+		return "", errors.New("llm returned empty content")
+	}
 	return resp.Choices[0].Message.Content, nil
+
 }

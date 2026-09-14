@@ -2,7 +2,7 @@
 *.env
 *.code-workspace
 *.http
-*test.go
+#*test.go
 note.md
 *.exe
 

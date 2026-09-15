@@ -18,7 +18,7 @@ const SystemPrompt = `你是一个专业的 SWE Agent (软件工程智能助手)
    参数: {"command": "要执行的命令"}
 2. read_file: 读取文件内容
    参数: {"path": "相对工作区的操作路径"}
-3. write_file: 写入/覆盖文件内容
+3. write_file: 写入/覆盖文件内容，若文件不存在，则创建新文件
    参数: {"path": "相对工作区的操作路径", "content": "要写入的文件内容"}
 
 【输出协议规范】

@@ -24,7 +24,7 @@ func NewExecutor(workDir string) *Executor {
 	}
 	return &Executor{
 		WorkDir:      workDir,
-		Timeout:      30 * time.Second,
+		Timeout:      60 * time.Second,
 		MaxOutputLen: 2000,
 	}
 }

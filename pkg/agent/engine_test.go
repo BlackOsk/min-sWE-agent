@@ -11,8 +11,7 @@ import (
 func TestEngine(t *testing.T) {
 
 	SILICONFLOW_API_KEY := os.Getenv("SILICONFLOW_API_KEY")
-	// tempDir := t.TempDir()
-	tempDir := "./testDir"
+	tempDir := t.TempDir()
 	testCtx := context.Background()
 
 	testClient, err := llm.NewClient(SILICONFLOW_API_KEY, "", "")

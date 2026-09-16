@@ -56,6 +56,12 @@ const SystemPrompt = `你是一个专业的 SWE Agent (软件工程智能助手)
   "content": "这是要写入的文本内容"
 }
 </call>
+
+【需要注意的补充信息】
+1. 当前系统运行环境包含指定 Python 解释器：D:\anaconda\envs\migrate1\python.exe；当你需要执行 Python 脚本或模块时，请优先使用上述绝对路径，例如：
+  <call name="exec">
+  {"command": "D:\\anaconda\\envs\\migrate1\\python.exe hello.py"}
+  </call>
 `
 
 type Engine struct {
@@ -139,22 +145,27 @@ func (e *Engine) Run(ctx context.Context, task string) (string, error) {
 	for step := 0; step < e.maxSteps; step++ {
 
 		fmt.Printf("\n[Step %d/%d]\n", step+1, e.maxSteps)
+		// 发起 LLM 请求前，先对上下文进行裁剪清洗
+		prunedMessages := e.pruneMessages(messages)
 
 		// 调用 e.llmClient.Completion(ctx, messages) 获取 LLM 输出
-		llmOutput, err := e.llmClient.Completion(ctx, messages)
+		llmOutput, err := e.llmClient.Completion(ctx, prunedMessages)
 		if err != nil {
 			return "", fmt.Errorf("LLM completion failed: %w", err)
 		}
-		// 将 LLM 输出追加到 messages 历史中 (Role: Assistant)
+
+		// 将 LLM 输出追加到 messages 历史中 (LLM Role: Assistant)
 		messages = append(messages, openai.ChatCompletionMessage{
 			Role:    openai.ChatMessageRoleAssistant,
 			Content: llmOutput,
 		})
+
 		// 调用 parser.Parse(llmOutput) 解析结果
 		result, err := parser.Parse(llmOutput)
 		if err != nil {
 			return "", fmt.Errorf("failed to parse LLM output: %w", err)
 		}
+
 		// 检查 result.ToolCall
 		//         - 若 result.ToolCall == nil，说明模型完成了推理/回答，直接 return result.Thought, nil
 		//         - 若 result.ToolCall != nil，调用 e.executeToolCall(ctx, result.ToolCall) 获取结果
@@ -167,6 +178,7 @@ func (e *Engine) Run(ctx context.Context, task string) (string, error) {
 			return llmOutput, nil
 		} else {
 
+			fmt.Printf("Thought: %s\n", result.Thought)
 			fmt.Printf("Tool Call: [%s] | Args: %v\n", result.ToolCall.Name, result.ToolCall.Args)
 			toolResult := e.executeToolCall(ctx, result.ToolCall)
 			fmt.Printf("Tool Output:\n\t%s\n", toolResult)
@@ -181,4 +193,34 @@ func (e *Engine) Run(ctx context.Context, task string) (string, error) {
 	}
 
 	return "", fmt.Errorf("reached maximum steps (%d) without completing the task", e.maxSteps)
+}
+
+// pruneMessages 对历史对话中的冗余 Tool Output 进行清理，防止上下文无限膨胀
+func (e *Engine) pruneMessages(messages []openai.ChatCompletionMessage) []openai.ChatCompletionMessage {
+	// 消息数量较少时不做处理（如小于 6 条）
+	if len(messages) <= 6 {
+		return messages
+	}
+
+	pruned := make([]openai.ChatCompletionMessage, len(messages))
+	copy(pruned, messages)
+
+	// 保留最新 4 条消息（即最近约 2 轮交互）不压缩
+	keepRecentIndex := len(pruned) - 4
+
+	// 遍历中间的历史消息 (跳过 index 0 的 System Prompt 和 index 1 的初始 Task)
+	for i := 2; i < keepRecentIndex; i++ {
+		msg := &pruned[i]
+		// 仅对 User 角色且包含 Tool Response 的历史长文本进行清理
+		if msg.Role == openai.ChatMessageRoleUser && strings.HasPrefix(msg.Content, "Tool Response:\n") {
+			// 如果历史工具输出超过 300 字符，进行压缩处理,保留前后 150 字符，并在末尾添加提示
+			if len(msg.Content) > 300 {
+				header := msg.Content[:150]
+				tail := msg.Content[len(msg.Content)-150:]
+				msg.Content = fmt.Sprintf("%s\n\n... [Historical Tool Log Pruned to save Context] ...\n%s", header, tail)
+			}
+		}
+	}
+
+	return pruned
 }

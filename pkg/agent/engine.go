@@ -56,6 +56,10 @@ const SystemPrompt = `你是一个专业的 SWE Agent (软件工程智能助手)
   "content": "这是要写入的文本内容"
 }
 </call>
+【任务规划与状态追踪规范 (Task Planner)】
+当面对包含 2 个以上步骤的复杂任务时，你必须按以下标准流程执行：
+1. 【规划阶段】：首先使用 write_file 工具在工作区根目录创建 "todo.md"，将任务拆解为具体的子任务清单（使用 markdown 复选框格式 "- [ ] 子任务"）。
+2. 【执行与追踪】：每完成一个子任务，在后续步骤中更新 "todo.md"（将完成项改为 "- [x]"），以保持上下文的清晰连贯。
 
 【需要注意的补充信息】
 1. 当前系统运行环境包含指定 Python 解释器：D:\anaconda\envs\migrate1\python.exe；当你需要执行 Python 脚本或模块时，请优先使用上述绝对路径，例如：
@@ -186,7 +190,7 @@ func (e *Engine) Run(ctx context.Context, task string) (string, error) {
 			// 将工具执行结果作为 User 消息追加到 messages 中：
 			messages = append(messages, openai.ChatCompletionMessage{
 				Role:    openai.ChatMessageRoleUser,
-				Content: fmt.Sprintf("Tool Response:\t %s", toolResult),
+				Content: fmt.Sprintf("Tool Response:\n\t %s", toolResult),
 			})
 		}
 
@@ -217,7 +221,7 @@ func (e *Engine) pruneMessages(messages []openai.ChatCompletionMessage) []openai
 			if len(msg.Content) > 300 {
 				header := msg.Content[:150]
 				tail := msg.Content[len(msg.Content)-150:]
-				msg.Content = fmt.Sprintf("%s\n\n... [Historical Tool Log Pruned to save Context] ...\n%s", header, tail)
+				msg.Content = fmt.Sprintf("%s\n\n... [Historical Tool Log Pruned to save Context] ...\n\n%s", header, tail)
 			}
 		}
 	}

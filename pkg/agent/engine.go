@@ -60,12 +60,6 @@ const SystemPrompt = `你是一个专业的 SWE Agent (软件工程智能助手)
 当面对包含 2 个以上步骤的复杂任务时，你必须按以下标准流程执行：
 1. 【规划阶段】：首先使用 write_file 工具在工作区根目录创建 "todo.md"，将任务拆解为具体的子任务清单（使用 markdown 复选框格式 "- [ ] 子任务"）。
 2. 【执行与追踪】：每完成一个子任务，在后续步骤中更新 "todo.md"（将完成项改为 "- [x]"），以保持上下文的清晰连贯。
-
-【需要注意的补充信息】
-1. 当前系统运行环境包含指定 Python 解释器：D:\anaconda\envs\migrate1\python.exe；当你需要执行 Python 脚本或模块时，请优先使用上述绝对路径，例如：
-  <call name="exec">
-  {"command": "D:\\anaconda\\envs\\migrate1\\python.exe hello.py"}
-  </call>
 `
 
 type Engine struct {

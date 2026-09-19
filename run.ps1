@@ -39,5 +39,7 @@ docker run --rm `
   -e SILICONFLOW_API_KEY="$env:SILICONFLOW_API_KEY" `
   -v "${AbsWorkDir}:/workspace" `
   minimal-swe-agent:v1 `
-  -task-file "/workspace/prompt.txt" `
+  -task-file "./prompt.txt" `
+  -dir "./"`
+  -log-dir "./" `
   -model "$Model"

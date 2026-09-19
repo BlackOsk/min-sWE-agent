@@ -63,19 +63,21 @@ const SystemPrompt = `你是一个专业的 SWE Agent (软件工程智能助手)
 `
 
 type Engine struct {
-	llmClient *llm.Client
-	executor  *executor.Executor
-	maxSteps  int
+	llmClient   *llm.Client
+	executor    *executor.Executor
+	maxSteps    int
+	traceLogger *TraceLogger
 }
 
-func NewEngine(llmClient *llm.Client, exec *executor.Executor, maxSteps int) *Engine {
+func NewEngine(llmClient *llm.Client, exec *executor.Executor, maxSteps int, traceLogger *TraceLogger) *Engine {
 	if maxSteps <= 0 {
 		maxSteps = 10
 	}
 	return &Engine{
-		llmClient: llmClient,
-		executor:  exec,
-		maxSteps:  maxSteps,
+		llmClient:   llmClient,
+		executor:    exec,
+		maxSteps:    maxSteps,
+		traceLogger: traceLogger,
 	}
 }
 
@@ -132,6 +134,7 @@ func (e *Engine) executeToolCall(ctx context.Context, call *parser.ToolCall) str
 
 // Run 启动 ReAct 主循环
 func (e *Engine) Run(ctx context.Context, task string) (string, error) {
+
 	messages := []openai.ChatCompletionMessage{
 		{Role: openai.ChatMessageRoleSystem, Content: SystemPrompt},
 		{Role: openai.ChatMessageRoleUser, Content: task},
@@ -167,6 +170,7 @@ func (e *Engine) Run(ctx context.Context, task string) (string, error) {
 		// 检查 result.ToolCall
 		//         - 若 result.ToolCall == nil，说明模型完成了推理/回答，直接 return result.Thought, nil
 		//         - 若 result.ToolCall != nil，调用 e.executeToolCall(ctx, result.ToolCall) 获取结果
+		var toolResult string
 		if result.ToolCall == nil {
 			fmt.Println("任务完成，无后续动作。")
 			fmt.Println(strings.Repeat("=", 60))
@@ -178,7 +182,7 @@ func (e *Engine) Run(ctx context.Context, task string) (string, error) {
 
 			fmt.Printf("Thought: %s\n", result.Thought)
 			fmt.Printf("Tool Call: [%s] | Args: %v\n", result.ToolCall.Name, result.ToolCall.Args)
-			toolResult := e.executeToolCall(ctx, result.ToolCall)
+			toolResult = e.executeToolCall(ctx, result.ToolCall)
 			fmt.Printf("Tool Output:\n\t%s\n", toolResult)
 
 			// 将工具执行结果作为 User 消息追加到 messages 中：
@@ -187,6 +191,8 @@ func (e *Engine) Run(ctx context.Context, task string) (string, error) {
 				Content: fmt.Sprintf("Tool Response:\n\t %s", toolResult),
 			})
 		}
+
+		e.traceLogger.LogStep(step+1, result.Thought, result.ToolCall.Name, result.ToolCall.Args, toolResult)
 
 	}
 

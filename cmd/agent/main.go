@@ -19,6 +19,7 @@ func main() {
 	taskFlag := flag.String("task", "", "要执行的任务描述 (例如: '帮我编写一个 Golang HTTP 服务并进行测试')")
 	taskFileFlag := flag.String("task-file", "", "包含任务描述的文本文件路径 (例如: 'prompt.txt')")
 	workDirFlag := flag.String("dir", ".", "Agent 执行工作的相对/绝对路径")
+	logggerDirFlag := flag.String("log-dir", ".", "Agent log的放置目录")
 	modelFlag := flag.String("model", "deepseek-ai/DeepSeek-V4-Flash", "使用的 LLM 模型名称")
 	maxStepsFlag := flag.Int("max-steps", 20, "ReAct 引擎的最大轮转步数")
 	flag.Parse()
@@ -54,8 +55,15 @@ func main() {
 
 	// 初始化 executor.NewExecutor
 	AgentExecutor := executor.NewExecutor(*workDirFlag)
+
+	// 初始化 agent.TraceLogger
+	traceLogger, err := agent.NewTraceLogger(*logggerDirFlag, taskContent)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// 初始化 agent.NewEngine
-	AgentEngine := agent.NewEngine(AgentClient, AgentExecutor, *maxStepsFlag)
+	AgentEngine := agent.NewEngine(AgentClient, AgentExecutor, *maxStepsFlag, traceLogger)
 
 	// 启动 engine.Run(context.Background(), *taskFlag) 并打印最终结果
 	ctx := context.Background()

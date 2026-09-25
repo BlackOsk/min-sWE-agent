@@ -20,7 +20,18 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /app/bin/swe-agent ./cmd/agent/main.go
 FROM docker.m.daocloud.io/library/golang:1.25-alpine
 
 # 安装基本软件开发工具 (bash, git, python3, curl)
-RUN apk add --no-cache bash git python3 py3-pip curl
+RUN apk add --no-cache \
+    bash \
+    git \
+    python3 \
+    py3-pip \
+    py3-requests \
+    py3-bs4 \
+    py3-lxml \
+    curl \
+    jq \
+    ca-certificates \
+    && rm -rf /var/cache/apk/*
 
 WORKDIR /workspace
 

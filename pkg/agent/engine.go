@@ -20,13 +20,17 @@ const SystemPrompt = `你是一个专业的 SWE Agent (软件工程智能助手)
    参数: {"path": "相对工作区的操作路径"}
 3. write_file: 写入/覆盖文件内容，若文件不存在，则创建新文件
    参数: {"path": "相对工作区的操作路径", "content": "要写入的文件内容"}
+4. task_all_done: 所有任务已完成，可以退出程序
+	参数：{"message": "所有任务已完成"}
+
 
 
 【输出协议规范】
 你的每次响应必须严格包含 <thought> 标签说明推理逻辑。
 如果需要调用工具，必须包含 <call name="工具名">JSON参数</call> 标签。
 如果不需要调用工具，则不要输出 <call> 标签。
-如果所有任务已完成，
+如果所有任务已完成，必须调用task_all_done 工具结束程序。
+
 
 格式示例1：
 <thought>
@@ -196,14 +200,23 @@ func (e *Engine) Run(ctx context.Context, task string) (string, error) {
 		//         - 若 result.ToolCall != nil，调用 e.executeToolCall(ctx, result.ToolCall) 获取结果
 		var toolResult string
 		if result.ToolCall == nil {
-			fmt.Println("任务完成，无后续动作。")
-			fmt.Println(strings.Repeat("=", 60))
-			if result.Thought != "" {
-				return result.Thought, nil
-			}
-			return llmOutput, nil
-		} else {
+			fmt.Printf("Thought: %s\n", result.Thought)
+			// 本次消息追加到 messages 中：
+			messages = append(messages, openai.ChatCompletionMessage{
+				Role:    openai.ChatMessageRoleUser,
+				Content: fmt.Sprintf("Thought: %s", result.Thought),
+			})
 
+		} else {
+			if result.ToolCall.Name == "task_all_done" {
+
+				fmt.Println("任务完成，无后续动作。")
+				fmt.Println(strings.Repeat("=", 60))
+				if result.Thought != "" {
+					return result.Thought, nil
+				}
+				return llmOutput, nil
+			}
 			fmt.Printf("Thought: %s\n", result.Thought)
 			fmt.Printf("Tool Call: [%s] | Args: %v\n", result.ToolCall.Name, result.ToolCall.Args)
 			toolResult = e.executeToolCall(ctx, result.ToolCall)

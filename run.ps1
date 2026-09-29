@@ -35,11 +35,17 @@ Write-Host "调用的模型: $Model" -ForegroundColor Cyan
 Write-Host "------------------------------------------------------------" -ForegroundColor Gray
 
 # 4. 启动 Docker 沙箱
-docker run --rm `
-  -e SILICONFLOW_API_KEY="$env:SILICONFLOW_API_KEY" `
-  -v "${AbsWorkDir}:/workspace" `
-  minimal-swe-agent:v1 `
-  -task-file "./prompt.txt" `
-  -dir "./"`
-  -log-dir "./" `
-  -model "$Model"
+$dockerArgs = @(
+    "run", "--rm",
+    "-e", "SILICONFLOW_API_KEY=$env:SILICONFLOW_API_KEY",
+    "-e", "APP_USER=admin",
+    "-e", "APP_PASS=pass",
+    "-v", "${AbsWorkDir}:/workspace",
+    "minimal-swe-agent:v1",
+    "-task-file", "./prompt.md",
+    "-dir", "./",
+    "-log-dir", "./",
+    "-model", $Model
+)
+
+docker $dockerArgs
